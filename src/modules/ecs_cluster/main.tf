@@ -372,6 +372,8 @@ resource "random_string" "random" {
 }
 
 resource "aws_alb_listener_rule" "service" {
+  for_each = toset([for random_str in random_string.random : random_str.result])
+  
   listener_arn = aws_alb_listener.https_listener.arn
 
   action {
@@ -379,18 +381,18 @@ resource "aws_alb_listener_rule" "service" {
     target_group_arn = aws_alb_target_group.target_group.arn
   }
 
-  # condition {
-  #   host_header {
-  #     values = var.alb_listener_rule_host_header_values
-  #   }
-  # }
-
-  dynamic "condition" {
-    for_each = toset([for random_str in random_string.random : random_str.result])
-    content {
-      path_pattern {
-        values = [condition.value]
-      }
+  condition {
+    path_pattern {
+      values = ["${random_string.random}/*"]
     }
   }
+
+  # dynamic "condition" {
+  #   for_each = toset([for random_str in random_string.random : random_str.result])
+  #   content {
+  #     path_pattern {
+  #       values = [condition.value]
+  #     }
+  #   }
+  # }
 }
