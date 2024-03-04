@@ -372,7 +372,9 @@ resource "random_string" "random" {
 }
 
 resource "aws_alb_listener_rule" "service" {
-  for_each = toset([for random_str in random_string.random : random_str.result])
+  count = 25
+  # for_each = { for idx, random_str in random_string.random : idx + 1 => random_str.result }
+  priority = count.index + 1
 
   listener_arn = aws_alb_listener.https_listener.arn
 
@@ -383,7 +385,7 @@ resource "aws_alb_listener_rule" "service" {
 
   condition {
     path_pattern {
-      values = ["${random_string.random}/*"]
+      values = ["${random_string.random[count.index].result}/*"]
     }
   }
 
