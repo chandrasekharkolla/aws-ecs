@@ -349,3 +349,47 @@ resource "aws_alb_listener_certificate" "click" {
   listener_arn    = aws_alb_listener.https_listener.arn
   certificate_arn = aws_acm_certificate.click.arn
 }
+
+# resource "aws_alb_listener_rule" "listener_rule" {
+#   listener_arn = aws_alb_listener.https_listener.arn
+
+#   action {
+#     type             = "forward"
+#     target_group_arn = aws_lb_target_group.target_group[0].arn
+#   }
+
+#   condition {
+#     path_pattern {
+#       values = ["${var.service_path}/*"]
+#     }
+#   }
+# }
+
+resource "random_string" "random" {
+  length  = 10
+  special = false
+}
+
+resource "aws_alb_listener_rule" "service" {
+  listener_arn = aws_alb_listener.https_listener.arn
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_alb_target_group.target_group.arn
+  }
+
+  # condition {
+  #   host_header {
+  #     values = var.alb_listener_rule_host_header_values
+  #   }
+  # }
+
+  dynamic "condition" {
+    for_each = toset([for i in random_string.random.*.result : i])
+    content {
+      path_pattern {
+        values = [condition.value]
+      }
+    }
+  }
+}
