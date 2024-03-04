@@ -224,7 +224,7 @@ resource "aws_alb" "alb" {
 
 resource "aws_route53_record" "route" {
 
-  zone_id = data.aws_route53_zone.hosted_zone.zone_id
+  zone_id = data.aws_route53_zone.net_hosted_zone.zone_id
   name    = "first"
   type    = "CNAME"
   ttl     = 300
@@ -234,7 +234,7 @@ resource "aws_route53_record" "route" {
 
 resource "aws_route53_record" "test" {
 
-  zone_id = data.aws_route53_zone.hosted_zone.zone_id
+  zone_id = data.aws_route53_zone.net_hosted_zone.zone_id
   name    = "test"
   type    = "CNAME"
   ttl     = 300
@@ -242,8 +242,13 @@ resource "aws_route53_record" "test" {
   records = [aws_alb.alb.dns_name]
 }
 
-data "aws_route53_zone" "hosted_zone" {
-  name         = var.hosted_zone_name
+data "aws_route53_zone" "net_hosted_zone" {
+  name         = var.net_hosted_zone_name
+  private_zone = false
+}
+
+data "aws_route53_zone" "click_hosted_zone" {
+  name         = var.click_hosted_zone_name
   private_zone = false
 }
 
@@ -284,7 +289,7 @@ resource "aws_route53_record" "cert_dnss" {
   name            = tolist(each.value.domain_validation_options)[0].resource_record_name
   records         = [tolist(each.value.domain_validation_options)[0].resource_record_value]
   type            = tolist(each.value.domain_validation_options)[0].resource_record_type
-  zone_id         = data.aws_route53_zone.hosted_zone.zone_id
+  zone_id         = data.aws_route53_zone.net_hosted_zone.zone_id
   ttl             = 60
 }
 
@@ -293,8 +298,20 @@ resource "aws_route53_record" "cert_dns" {
   name            = tolist(aws_acm_certificate.cert.domain_validation_options)[0].resource_record_name
   records         = [tolist(aws_acm_certificate.cert.domain_validation_options)[0].resource_record_value]
   type            = tolist(aws_acm_certificate.cert.domain_validation_options)[0].resource_record_type
-  zone_id         = data.aws_route53_zone.hosted_zone.zone_id
+  zone_id         = data.aws_route53_zone.net_hosted_zone.zone_id
   ttl             = 60
+}
+
+resource "aws_route53_record" "click_domain" {
+  zone_id = data.aws_route53_zone.click_hosted_zone.zone_id
+  name    = var.click_hosted_zone_name
+  type    = "A"
+
+  alias {
+    name                   = aws_alb.alb.dns_name
+    zone_id                = aws_alb.alb.zone_id
+    evaluate_target_health = true
+  }
 }
 
 resource "aws_acm_certificate_validation" "certs_validate" {
@@ -307,4 +324,28 @@ resource "aws_acm_certificate_validation" "certs_validate" {
 resource "aws_acm_certificate_validation" "cert_validate" {
   certificate_arn         = aws_acm_certificate.cert.arn
   validation_record_fqdns = [aws_route53_record.cert_dns.fqdn]
+}
+
+resource "aws_acm_certificate" "click" {
+  domain_name       = "moonlightorg.click"
+  validation_method = "DNS"
+}
+
+resource "aws_route53_record" "click_validation" {
+  name    = tolist(aws_acm_certificate.click.domain_validation_options)[0].resource_record_name
+  type    = tolist(aws_acm_certificate.click.domain_validation_options)[0].resource_record_type
+  zone_id = data.aws_route53_zone.click_hosted_zone.id
+  records = [tolist(aws_acm_certificate.click.domain_validation_options)[0].resource_record_value]
+
+  ttl = 60
+}
+
+resource "aws_acm_certificate_validation" "example_validate" {
+  certificate_arn         = aws_acm_certificate.click.arn
+  validation_record_fqdns = [aws_route53_record.click_validation.fqdn]
+}
+
+resource "aws_alb_listener_certificate" "click" {
+  listener_arn    = aws_alb_listener.https_listener.arn
+  certificate_arn = aws_acm_certificate.click.arn
 }

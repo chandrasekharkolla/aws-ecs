@@ -78,7 +78,12 @@ variable "image_uri" {
   default = ""
 }
 
-variable "hosted_zone_name" {
+variable "net_hosted_zone_name" {
+  type    = string
+  default = ""
+}
+
+variable "click_hosted_zone_name" {
   type    = string
   default = ""
 }
