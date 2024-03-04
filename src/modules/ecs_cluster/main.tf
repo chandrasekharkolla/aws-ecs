@@ -373,7 +373,7 @@ resource "random_string" "random" {
 
 resource "aws_alb_listener_rule" "service" {
   for_each = toset([for random_str in random_string.random : random_str.result])
-  
+
   listener_arn = aws_alb_listener.https_listener.arn
 
   action {
