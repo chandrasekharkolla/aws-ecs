@@ -366,6 +366,7 @@ resource "aws_alb_listener_certificate" "click" {
 # }
 
 resource "random_string" "random" {
+  count   = 25
   length  = 10
   special = false
 }
@@ -385,7 +386,7 @@ resource "aws_alb_listener_rule" "service" {
   # }
 
   dynamic "condition" {
-    for_each = toset([for i in random_string.random.*.result : i])
+    for_each = toset([for random_str in random_string.random : random_str.result])
     content {
       path_pattern {
         values = [condition.value]
